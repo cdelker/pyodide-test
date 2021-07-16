@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="basic.css">
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.17.0/full/pyodide.js"></script>
+    <script type="text/javascript" id="MathJax-script" async
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+    </script>
+</head>
+
+<body>
+  <h2>Derivative Calculator</h2>
+  <p>
+    f(x) =
+    <input id='expression' value='x**3'>
+    <button onclick='evaluatePython()'>Calculate</button>
+  </p>
+  <div></div>
+  <p id="math"></p>
+  <p><textarea id='output' style='width: 100%;' rows='2' disabled></textarea></p>
+  <p>Based on <a href="https://pyodide.org/">Pyodide</a> and <a href="https://www.sympy.org/">Sympy</a></p>
+
+  <script>
+    const output = document.getElementById("output");
+
+    output.value = 'Loading Python...\n';
+    // init Pyodide
+    async function main(){
+      await loadPyodide({ indexURL : 'https://cdn.jsdelivr.net/pyodide/v0.17.0/full/' });
+      output.value = 'Loading Sympy...';
+      await pyodide.loadPackage("micropip");
+      await pyodide.runPythonAsync(`
+        import micropip
+        await micropip.install('sympy')
+        `)
+      output.value = 'Ready!\n';
+    }
+    let pyodideReadyPromise = main();
+
+    async function evaluatePython() {
+      await pyodideReadyPromise;
+
+      try {
+        let val = await pyodide.runPython(`
+from js import document
+import sympy
+
+expr = document.getElementById('expression').value
+mathout = document.getElementById('math')
+
+expr = sympy.sympify(expr)
+
+result = sympy.latex(sympy.diff(expr, sympy.Symbol('x')))
+mathout.innerHTML = '$$' + result + '$$'
+result
+`);
+        output.value = val;
+        MathJax.texReset();
+        MathJax.typesetClear();
+        MathJax.typeset();          
+      } catch(err) {
+        output.value = err;
+      }
+    }
+  </script>
+</body>
+
+</html>

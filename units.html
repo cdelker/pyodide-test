@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="basic.css">
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.17.0/full/pyodide.js"></script>
+</head>
+
+<body>
+  <h2>Units Converter</h2>
+  <p>
+    <input id='value' value='1 mile'>
+    to
+    <input id='tounits' value='kilometer'>
+    <button onclick='evaluatePython()'>Convert</button>
+  </p>
+  <div></div>
+  <p><textarea id='output' style='width: 75%;' rows='2' disabled></textarea></p>
+  <div></div>
+  <p>Based on <a href="https://pyodide.org/">Pyodide</a> and <a href="https://pint.readthedocs.io/">Pint</a>.</p>
+  <script>
+    const output = document.getElementById("output");
+
+    output.value = 'Loading Python...\n';
+    // init Pyodide
+    async function main(){
+      await loadPyodide({ indexURL : 'https://cdn.jsdelivr.net/pyodide/v0.17.0/full/' });
+      output.value = 'Loading Pint...';
+      await pyodide.loadPackage("micropip");
+      await pyodide.runPythonAsync(`
+        import micropip
+        await micropip.install('pint')
+        `)
+
+      output.value = 'Ready!\n';        
+    }
+    let pyodideReadyPromise = main();
+
+    async function evaluatePython() {
+      await pyodideReadyPromise;
+
+      try {
+        let val = await pyodide.runPython(`
+from js import document
+import pint
+ureg = pint.UnitRegistry()
+
+value = document.getElementById('value').value
+tounits = document.getElementById('tounits').value
+
+try:
+    valunits = ureg.Quantity(value)
+    tounits = ureg.parse_units(tounits)
+    out = '{!s}'.format(valunits.to(tounits))
+except (pint.UndefinedUnitError, pint.DimensionalityError,
+        pint.OffsetUnitCalculusError, pint.LogarithmicUnitCalculusError) as e:
+    out = str(e)
+
+out
+`);
+        output.value = val;
+      } catch(err) {
+        output.value = err;
+
+      }
+    }
+  </script>
+</body>
+
+</html>
